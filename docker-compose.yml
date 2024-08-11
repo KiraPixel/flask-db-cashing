@@ -1,0 +1,15 @@
+services:
+  cashing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/ref
+    environment:
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_DATABASE_URL}
+      CESAR_USERNAME: ${CESAR_USERNAME}
+      CESAR_PASSWORD: ${CESAR_PASSWORD}
+      WIALON_TOKEN: ${WIALON_TOKEN}
+    stdin_open: true   # Открывает стандартный вход
+    tty: true          # Позволяет использовать терминал
+    restart: always
