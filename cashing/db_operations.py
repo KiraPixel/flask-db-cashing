@@ -68,6 +68,8 @@ def cash_db(cesar_result, wialon_result):
             obj_id = item.get('id', None)
             uid = item.get('uid', None)
             nm = item.get('nm', None)
+            if nm and '|' in nm:
+                nm = nm.split('|')[0].strip()
             pos = item.get('pos', {}) if item.get('pos') else {}
             lmsg = item.get('lmsg', {}) if item.get('lmsg') else {}
 
