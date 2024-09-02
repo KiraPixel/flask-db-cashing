@@ -1,5 +1,5 @@
-import schedule
 import time
+import schedule
 from cashing.data_fetcher import fetch_data
 from cashing.db_operations import clear_db, cash_db
 from cashing.transport_updater import update_transport
@@ -30,6 +30,7 @@ def run_transport_update():
     current_minute = time.localtime().tm_min
     if current_minute % 10 == 0:
         update_transport_status()
+
 
 
 # Расписание задач

@@ -24,6 +24,7 @@ def clear_db():
     finally:
         session.close()
 
+
 def cash_db(cesar_result, wialon_result):
     """Добавляет данные в таблицы CashCesar и CashWialon."""
     session = SessionLocal()
@@ -77,7 +78,6 @@ def cash_db(cesar_result, wialon_result):
             pos_y = pos.get('y', 0.0)
             last_time = lmsg.get('t', 0)
             last_pos_time = pos.get('t', 0)
-
             if obj_id is None or nm is None:
                 print(f"Skipping item due to missing required fields: {item}")
                 continue

@@ -22,6 +22,7 @@ DATABASE_URL = os.getenv('SQLALCHEMY_DATABASE_URL', 'sqlite:///default.db')
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 
+
 def get_status(name=None):
     """Получает статус обновления для db, transport или всех."""
     session = Session()

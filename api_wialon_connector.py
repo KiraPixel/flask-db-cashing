@@ -1,19 +1,33 @@
-from wialon import Wialon
+import json
+import requests
 import config
 
 token = config.WIALON_TOKEN
+api_url = config.WIALON_HOST
 
 
-def wialon_connector():
-    wialon_api = Wialon()
-    result = wialon_api.token_login(token=token)
-    wialon_api.sid = result['eid']
-    return wialon_api
+def get_wialon_sid():
+    params = {
+        'token': token
+    }
+    response = requests.get(api_url, params={
+        'svc': 'token/login',
+        'params': json.dumps(params)
+    }, verify=False)
+
+    if response.status_code == 200:
+        result = response.json()
+        if 'eid' in result:
+            return result['eid']
+        else:
+            print(f"Error: {result}")
+            return None
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
 
 
 def search_all_items():
-    wialon_api = wialon_connector()
-
     params = {
         'spec': {
             'itemsType': 'avl_unit',
@@ -26,7 +40,16 @@ def search_all_items():
         'from': 0,
         'to': 0,
     }
+    response = requests.get(api_url, params={
+        'svc': 'core/search_items',
+        'params': json.dumps(params),
+        'sid': get_wialon_sid()
+    }, verify=False)
 
-    result = wialon_api.core_search_items(params)
-
-    return result['items']
+    if response.status_code == 200:
+        final_response = response.json()
+        final_response = final_response['items']
+        return final_response
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
