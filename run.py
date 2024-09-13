@@ -17,26 +17,10 @@ def update_db():
     print("Обновление базы данных завершено.")
 
 
-def update_transport_status():
-    print("Запуск обновления транспорта...")
-    system_status_manager.set_status('transport', True)
-    update_transport()
-    system_status_manager.set_status('transport', False)
-    print("Обновление транспорта завершено.")
-
-
-def run_transport_update():
-    """Вызываем обновление транспорта только в нужное время"""
-    current_minute = time.localtime().tm_min
-    if current_minute % 10 == 0:
-        update_transport_status()
-
-
+#update_db()
 
 # Расписание задач
 schedule.every(1).minutes.do(update_db)  # Выполнять update_db() каждую минуту
-
-#schedule.every(1).minute.do(run_transport_update)  # Проверяем каждую минуту, если время для обновления транспорта
 
 if __name__ == "__main__":
     print("Запуск планировщика задач...")

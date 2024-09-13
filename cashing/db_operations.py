@@ -11,6 +11,7 @@ SQLALCHEMY_DATABASE_URL = config.SQLALCHEMY_DATABASE_URL
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def clear_db():
     """Очищает таблицы CashCesar и CashWialon в базе данных."""
     session = SessionLocal()
@@ -78,9 +79,18 @@ def cash_db(cesar_result, wialon_result):
             pos_y = pos.get('y', 0.0)
             last_time = lmsg.get('t', 0)
             last_pos_time = pos.get('t', 0)
+            cmd = item.get('cml', '')
+            sens = item.get('sens', '')
+
             if obj_id is None or nm is None:
                 print(f"Skipping item due to missing required fields: {item}")
                 continue
+
+            if cmd:
+                cmd = {item["id"]: item["n"] for item in cmd.values()}
+
+            if sens:
+                sens = {item["id"]: item["n"] for item in sens.values()}
 
             try:
                 uid = int(uid)
@@ -98,7 +108,9 @@ def cash_db(cesar_result, wialon_result):
                 pos_x=pos_x,
                 pos_y=pos_y,
                 last_time=last_time,
-                last_pos_time=last_pos_time
+                last_pos_time=last_pos_time,
+                cmd=cmd,
+                sens=sens,
             )
             session.add(wialon_entry)
 

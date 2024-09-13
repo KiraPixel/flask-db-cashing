@@ -90,6 +90,8 @@ class CashWialon(Base):
     last_time = Column(Integer, default=0)
     last_pos_time = Column(Integer, default=0)
     linked = Column(Boolean, nullable=True, default=False)
+    cmd = Column(Text, nullable=True, default='')
+    sens = Column(Text, nullable=True, default='')
 
     __table_args__ = (
         Index('idx_cash_wialon_nm', 'nm'),

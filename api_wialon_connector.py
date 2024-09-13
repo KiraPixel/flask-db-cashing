@@ -1,9 +1,10 @@
 import json
+import os
 import requests
-import config
 
-token = config.WIALON_TOKEN
-api_url = config.WIALON_HOST
+
+token = os.getenv('WIALON_TOKEN', 'default_token')
+api_url = os.getenv('WIALON_HOST', 'default_host')
 
 
 def get_wialon_sid():
@@ -36,7 +37,7 @@ def search_all_items():
             'sortType': 'sys_name'
         },
         'force': 1,
-        'flags': 1 | 256 | 1024,
+        'flags': 1 | 256 | 1024 | 4096 | 524288,
         'from': 0,
         'to': 0,
     }
@@ -49,7 +50,55 @@ def search_all_items():
     if response.status_code == 200:
         final_response = response.json()
         final_response = final_response['items']
+
+        # with open('search_items_response.json', 'w', encoding='utf-8') as json_file:
+        #     json.dump(final_response, json_file, ensure_ascii=False, indent=4)
+
         return final_response
     else:
         print(f"Error: {response.status_code} - {response.text}")
         return None
+
+
+def exec_cmd(unit_id):
+    params = {
+        'itemId': unit_id,
+        'commandName': "Включить",
+        'linkType': '',
+        'param': '',
+        'timeout': 5,
+        'flags': 0
+    }
+    response = requests.get(api_url, params={
+        'svc': 'unit/exec_cmd',
+        'params': json.dumps(params),
+        'sid': get_wialon_sid()
+    }, verify=False)
+
+    if response.status_code == 200:
+        final_response = response.json()
+        return final_response
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
+
+
+def get_sensors(unit_id):
+    params = {
+        'unitId': unit_id,
+        'sensors': '',
+    }
+    response = requests.get(api_url, params={
+        'svc': 'unit/calc_last_message',
+        'params': json.dumps(params),
+        'sid': get_wialon_sid()
+    }, verify=False)
+
+    if response.status_code == 200:
+        final_response = response.json()
+        return final_response
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
+
+
