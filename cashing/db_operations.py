@@ -77,6 +77,7 @@ def cash_db(cesar_result, wialon_result):
 
             pos_x = pos.get('x', 0.0)
             pos_y = pos.get('y', 0.0)
+            gps = pos.get('sc', 0)
             last_time = lmsg.get('t', 0)
             last_pos_time = pos.get('t', 0)
             cmd = item.get('cml', '')
@@ -107,6 +108,7 @@ def cash_db(cesar_result, wialon_result):
                 nm=nm,
                 pos_x=pos_x,
                 pos_y=pos_y,
+                gps=gps,
                 last_time=last_time,
                 last_pos_time=last_pos_time,
                 cmd=cmd,

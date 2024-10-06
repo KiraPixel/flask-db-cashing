@@ -87,6 +87,7 @@ class CashWialon(Base):
     nm = Column(Text, nullable=False)
     pos_x = Column(Float, default=0.0)
     pos_y = Column(Float, default=0.0)
+    gps = Column(Integer, default=0)
     last_time = Column(Integer, default=0)
     last_pos_time = Column(Integer, default=0)
     linked = Column(Boolean, nullable=True, default=False)
