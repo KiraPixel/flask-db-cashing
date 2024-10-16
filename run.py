@@ -11,7 +11,6 @@ def update_db():
     print("Запуск обновления базы данных...")
     cesar_result, wialon_result = fetch_data()
     system_status_manager.set_status('db', True)
-    clear_db()
     cash_db(cesar_result, wialon_result)
     system_status_manager.set_status('db', False)
     print("Обновление базы данных завершено.")

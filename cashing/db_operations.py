@@ -145,6 +145,7 @@ def cash_db(cesar_result, wialon_result):
                 )
                 session.add(new_history_entry)
 
+        clear_db()
         session.commit()
 
     except Exception as e:
