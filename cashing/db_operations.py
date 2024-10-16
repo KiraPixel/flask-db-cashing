@@ -1,8 +1,8 @@
 # cashing/db_operations.py
 
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
-from models import CashWialon, CashCesar
+from sqlalchemy import create_engine, and_, desc
+from models import CashWialon, CashCesar, CashHistoryWialon
 import config
 from cashing.utils import to_unix_time
 
@@ -116,9 +116,40 @@ def cash_db(cesar_result, wialon_result):
             )
             session.add(wialon_entry)
 
+            # Проверка в WialonHistory
+            history_entry = session.query(CashHistoryWialon).filter(
+                and_(
+                    CashHistoryWialon.uid == uid,
+                    CashHistoryWialon.nm == nm
+                )
+            ).order_by(desc(CashHistoryWialon.last_time)).first()
+            if history_entry:
+                # Если запись существует, проверяем время
+                if last_time > history_entry.last_time:
+                    new_history_entry = CashHistoryWialon(
+                        uid=uid,
+                        nm=nm,
+                        pos_x=pos_x,
+                        pos_y=pos_y,
+                        last_time=last_time
+                    )
+                    session.add(new_history_entry)
+            else:
+                # Если записи нет, добавляем новую
+                new_history_entry = CashHistoryWialon(
+                    uid=uid,
+                    nm=nm,
+                    pos_x=pos_x,
+                    pos_y=pos_y,
+                    last_time=last_time
+                )
+                session.add(new_history_entry)
+
         session.commit()
+
     except Exception as e:
         session.rollback()
         print(f"Error occurred while updating the database: {e}")
+
     finally:
         session.close()

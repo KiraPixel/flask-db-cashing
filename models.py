@@ -99,6 +99,16 @@ class CashWialon(Base):
     )
 
 
+class CashHistoryWialon(Base):
+    __tablename__ = 'cash_history_wialon'
+    id = Column(Integer, primary_key=True)
+    uid = Column(Integer, nullable=False, default=0)
+    nm = Column(Text, nullable=False)
+    pos_x = Column(Float, default=0.0)
+    pos_y = Column(Float, default=0.0)
+    last_time = Column(Integer, default=0)
+
+
 # Индекс для поля uNumber в Transport
 Index('idx_transport_unumber', Transport.uNumber)
 
