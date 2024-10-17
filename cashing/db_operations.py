@@ -123,27 +123,27 @@ def cash_db(cesar_result, wialon_result):
                     CashHistoryWialon.nm == nm
                 )
             ).order_by(desc(CashHistoryWialon.last_time)).first()
-            if history_entry:
-                # Если запись существует, проверяем время
-                if last_time > history_entry.last_time:
-                    new_history_entry = CashHistoryWialon(
-                        uid=uid,
-                        nm=nm,
-                        pos_x=pos_x,
-                        pos_y=pos_y,
-                        last_time=last_time
-                    )
-                    session.add(new_history_entry)
-            else:
-                # Если записи нет, добавляем новую
-                new_history_entry = CashHistoryWialon(
-                    uid=uid,
-                    nm=nm,
-                    pos_x=pos_x,
-                    pos_y=pos_y,
-                    last_time=last_time
-                )
-                session.add(new_history_entry)
+            # if history_entry:
+            #     # Если запись существует, проверяем время
+            #     if last_time > history_entry.last_time:
+            #         new_history_entry = CashHistoryWialon(
+            #             uid=uid,
+            #             nm=nm,
+            #             pos_x=pos_x,
+            #             pos_y=pos_y,
+            #             last_time=last_time
+            #         )
+            #         session.add(new_history_entry)
+            # else:
+            #     # Если записи нет, добавляем новую
+            #     new_history_entry = CashHistoryWialon(
+            #         uid=uid,
+            #         nm=nm,
+            #         pos_x=pos_x,
+            #         pos_y=pos_y,
+            #         last_time=last_time
+            #     )
+            #     session.add(new_history_entry)
 
         clear_db()
         session.commit()
