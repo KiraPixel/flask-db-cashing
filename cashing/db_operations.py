@@ -133,15 +133,16 @@ def process_wialon_result(session, wialon_result):
 def update_wialon_history(session, uid, nm, last_time, pos_x, pos_y):
     """Добавляет или обновляет запись в CashHistoryWialon, если есть изменения."""
 
+    # Если время 0, сразу сбрасываем
+    if last_time == 0 or pos_x == 0 or pos_y == 0:
+        return
+
     # Поиск последней записи для uid и nm
     history_entry = session.query(CashHistoryWialon).filter(
         CashHistoryWialon.uid == uid,
         CashHistoryWialon.nm == nm
     ).order_by(desc(CashHistoryWialon.last_time)).first()
 
-    # Если время 0, сразу сбрасываем
-    if last_time == 0:
-        return
     # Если запись не найдена, создаем новую
     if not history_entry:
         new_entry = CashHistoryWialon(
