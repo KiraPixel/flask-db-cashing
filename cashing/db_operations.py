@@ -1,156 +1,180 @@
-# cashing/db_operations.py
-
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, and_, desc
+from sqlalchemy import create_engine, and_, desc, text
 from models import CashWialon, CashCesar, CashHistoryWialon
 import config
 from cashing.utils import to_unix_time
 
 # Конфигурация базы данных
 SQLALCHEMY_DATABASE_URL = config.SQLALCHEMY_DATABASE_URL
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def clear_db():
-    """Очищает таблицы CashCesar и CashWialon в базе данных."""
-    session = SessionLocal()
+def bulk_insert_or_replace(session, query, params):
+    """Выполняет REPLACE INTO в батчах для повышения производительности."""
     try:
-        session.query(CashCesar).delete()
-        session.query(CashWialon).delete()
-        session.commit()
+        session.execute(query, params)
     except Exception as e:
+        print(f"Error during bulk operation: {e}")
         session.rollback()
-        print(f"Error occurred while clearing the database: {e}")
-    finally:
-        session.close()
+        raise
+
+
+def process_cesar_result(session, cesar_result):
+    """Обрабатывает данные из cesar_result и выполняет REPLACE INTO cash_cesar."""
+    if not cesar_result:
+        return
+
+    replace_query = text(
+        """REPLACE INTO cash_cesar (unit_id, object_name, pin, vin, last_time, pos_x, pos_y, created_at, device_type)
+           VALUES (:unit_id, :object_name, :pin, :vin, :last_time, :pos_x, :pos_y, :created_at, :device_type)"""
+    )
+
+    batch_data = []
+    for item in cesar_result:
+        # Проверка на None
+        if item is None:
+            print("Skipping None item")
+            continue
+
+        # Проверка на отсутствие ключей
+        if None in [item.get('unit_id'), item.get('object_name'), item.get('vin')]:
+            print(f"Skipping item due to missing required fields: {item}")
+            continue
+
+        batch_data.append({
+            'unit_id': item.get('unit_id'),
+            'object_name': item.get('object_name'),
+            'pin': item.get('pin'),
+            'vin': item.get('vin'),
+            'last_time': to_unix_time(item.get('receive_time', None)),
+            'pos_x': item.get('lat', 0.0),
+            'pos_y': item.get('lon', 0.0),
+            'created_at': to_unix_time(item.get('created_at', None)),
+            'device_type': item.get('device_type', 'Unknown')
+        })
+
+    if batch_data:
+        bulk_insert_or_replace(session, replace_query, batch_data)
+
+
+def process_wialon_result(session, wialon_result):
+    """Обрабатывает данные из wialon_result и обновляет cash_wialon, cash_history_wialon."""
+    if not wialon_result:
+        return
+
+    replace_query = text(
+        """REPLACE INTO cash_wialon (id, uid, nm, pos_x, pos_y, gps, last_time, last_pos_time, cmd, sens)
+           VALUES (:id, :uid, :nm, :pos_x, :pos_y, :gps, :last_time, :last_pos_time, :cmd, :sens)"""
+    )
+
+    batch_data = []
+    for idx, item in enumerate(wialon_result):
+        if item is None:
+            print(f"Skipping None item at index {idx}")
+            continue
+
+        try:
+            # Проверяем наличие необходимых ключей
+            if item.get('id') is None or item.get('nm') is None:
+                print(f"Skipping item due to missing required fields at index {idx}: {item}")
+                continue
+
+            uid = item.get('uid', 0)
+            uid = 0 if not str(uid).isdigit() else uid
+            nm = item.get('nm', '').split('|')[0].strip() if '|' in item.get('nm', '') else item.get('nm', '')
+
+            # Проверяем наличие sens и cml, создаем пустые словари, если они отсутствуют
+            cmd = {c['id']: c['n'] for c in item.get('cml', {}).values()} if item.get('cml') else {}
+            sens = {s['id']: s['n'] for s in item.get('sens', {}).values()} if item.get('sens') else {}
+
+            # Обработка pos
+            if item.get('pos') is not None:
+                pos_x = item['pos'].get('x', 0.0) if item['pos'].get('x') is not None else 0.0
+                pos_y = item['pos'].get('y', 0.0) if item['pos'].get('y') is not None else 0.0
+                gps = item.get('pos', {}).get('sc', 0) if item.get('pos') is not None else 0
+                last_pos_time = item.get('pos', {}).get('t', 0) if item.get('pos') is not None else 0
+            else:
+                pos_x = 0.0
+                pos_y = 0.0
+                gps = -1
+                last_pos_time = 0
+
+            if item.get('lmsg') is not None:
+                last_time = item.get('lmsg', {}).get('t', 0) if item.get('lmsg') is not None else 0
+            else:
+                last_time = 0
+
+            batch_data.append({
+                'id': item.get('id'),
+                'uid': uid,
+                'nm': nm,
+                'pos_x': pos_x,
+                'pos_y': pos_y,
+                'gps': gps,
+                'last_time': last_time,
+                'last_pos_time': last_pos_time,
+                'cmd': str(cmd),
+                'sens': str(sens)
+            })
+
+            # Обновляем историю, если нужно
+            update_wialon_history(session, uid, nm, last_time, pos_x, pos_y)
+
+        except Exception as e:  # Ловим все исключения
+            print(f"Error processing item at index {idx}: {item}")
+            print(f"Exception: {e}")
+            continue  # Пропустить ошибочный элемент
+
+    if batch_data:
+        bulk_insert_or_replace(session, replace_query, batch_data)
+
+
+def update_wialon_history(session, uid, nm, last_time, pos_x, pos_y):
+    """Добавляет или обновляет запись в CashHistoryWialon, если есть изменения."""
+
+    # Поиск последней записи для uid и nm
+    history_entry = session.query(CashHistoryWialon).filter(
+        CashHistoryWialon.uid == uid,
+        CashHistoryWialon.nm == nm
+    ).order_by(desc(CashHistoryWialon.last_time)).first()
+
+    # Если время 0, сразу сбрасываем
+    if last_time == 0:
+        return
+    # Если запись не найдена, создаем новую
+    if not history_entry:
+        new_entry = CashHistoryWialon(
+            uid=uid,
+            nm=nm,
+            pos_x=pos_x,
+            pos_y=pos_y,
+            last_time=last_time
+        )
+        session.add(new_entry)
+    else:
+        # Если время обновления больше, чем в последней записи, обновляем
+        if last_time > history_entry.last_time:
+            # Проверяем, изменились ли координаты
+            if pos_x != history_entry.pos_x or pos_y != history_entry.pos_y:
+                new_entry = CashHistoryWialon(
+                    uid=uid,
+                    nm=nm,
+                    pos_x=pos_x,
+                    pos_y=pos_y,
+                    last_time=last_time
+                )
+                session.add(new_entry)
 
 
 def cash_db(cesar_result, wialon_result):
-    """Добавляет данные в таблицы CashCesar и CashWialon."""
     session = SessionLocal()
     try:
-        for item in cesar_result:
-            if item is None:
-                print("Received None item in cesar_result")
-                continue
-
-            unit_id = item.get('unit_id', None)
-            object_name = item.get('object_name', None)
-            pin = item.get('pin', None)
-            vin = item.get('vin', None)
-            last_time = to_unix_time(item.get('receive_time'))
-            pos_x = item.get('lat', 0.0)
-            pos_y = item.get('lon', 0.0)
-            created_at = to_unix_time(item.get('created_at'))
-            device_type = item.get('device_type', 'Unknown')
-
-            if unit_id is None or object_name is None or vin is None:
-                print(f"Skipping item due to missing required fields: {item}")
-                continue
-
-            cesar_entry = CashCesar(
-                unit_id=unit_id,
-                object_name=object_name,
-                pin=pin,
-                vin=vin,
-                last_time=last_time,
-                pos_x=pos_x,
-                pos_y=pos_y,
-                created_at=created_at,
-                device_type=device_type
-            )
-            session.add(cesar_entry)
-
-        for item in wialon_result:
-            if item is None:
-                print("Received None item in wialon_result")
-                continue
-
-            obj_id = item.get('id', None)
-            uid = item.get('uid', None)
-            nm = item.get('nm', None)
-            if nm and '|' in nm:
-                nm = nm.split('|')[0].strip()
-            pos = item.get('pos', {}) if item.get('pos') else {}
-            lmsg = item.get('lmsg', {}) if item.get('lmsg') else {}
-
-            pos_x = pos.get('x', 0.0)
-            pos_y = pos.get('y', 0.0)
-            gps = pos.get('sc', 0)
-            last_time = lmsg.get('t', 0)
-            last_pos_time = pos.get('t', 0)
-            cmd = item.get('cml', '')
-            sens = item.get('sens', '')
-
-            if obj_id is None or nm is None:
-                print(f"Skipping item due to missing required fields: {item}")
-                continue
-
-            if cmd:
-                cmd = {item["id"]: item["n"] for item in cmd.values()}
-
-            if sens:
-                sens = {item["id"]: item["n"] for item in sens.values()}
-
-            try:
-                uid = int(uid)
-                if uid > 9223372036854775807:  # Пример для BIGINT в MySQL
-                    print(f"Value for uid is too large: {nm} - {uid}. Replacing with 0.")
-                    uid = 0
-            except (ValueError, TypeError):
-                print(f"Invalid value for uid: {nm} - {uid}. Replacing with 0.")
-                uid = 0
-
-            wialon_entry = CashWialon(
-                id=obj_id,
-                uid=uid,
-                nm=nm,
-                pos_x=pos_x,
-                pos_y=pos_y,
-                gps=gps,
-                last_time=last_time,
-                last_pos_time=last_pos_time,
-                cmd=cmd,
-                sens=sens,
-            )
-            session.add(wialon_entry)
-
-            # Проверка в WialonHistory
-            history_entry = session.query(CashHistoryWialon).filter(
-                and_(
-                    CashHistoryWialon.uid == uid,
-                    CashHistoryWialon.nm == nm
-                )
-            ).order_by(desc(CashHistoryWialon.last_time)).first()
-            # if history_entry:
-            #     # Если запись существует, проверяем время
-            #     if last_time > history_entry.last_time:
-            #         new_history_entry = CashHistoryWialon(
-            #             uid=uid,
-            #             nm=nm,
-            #             pos_x=pos_x,
-            #             pos_y=pos_y,
-            #             last_time=last_time
-            #         )
-            #         session.add(new_history_entry)
-            # else:
-            #     # Если записи нет, добавляем новую
-            #     new_history_entry = CashHistoryWialon(
-            #         uid=uid,
-            #         nm=nm,
-            #         pos_x=pos_x,
-            #         pos_y=pos_y,
-            #         last_time=last_time
-            #     )
-            #     session.add(new_history_entry)
-
-        clear_db()
-        session.commit()
-
+        process_cesar_result(session, cesar_result)
+        process_wialon_result(session, wialon_result)
+        session.commit()  # Один общий commit для всех операций
     except Exception as e:
         session.rollback()
-        print(f"Error occurred while updating the database: {e}")
-
+        print(f"Error occurred during database operation: {e}")
     finally:
         session.close()
