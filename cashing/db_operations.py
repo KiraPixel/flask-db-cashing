@@ -43,9 +43,10 @@ def process_cesar_result(session, cesar_result):
             print(f"Skipping item due to missing required fields: {item}")
             continue
 
+        object_name = item.get('object_name', '').split('|')[0].strip() if '|' in item.get('object_name', '') else item.get('object_name', '')
         batch_data.append({
             'unit_id': item.get('unit_id'),
-            'object_name': item.get('object_name'),
+            'object_name': object_name,
             'pin': item.get('pin'),
             'vin': item.get('vin'),
             'last_time': to_unix_time(item.get('receive_time', None)),
