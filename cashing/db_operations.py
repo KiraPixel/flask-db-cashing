@@ -131,22 +131,21 @@ def process_wialon_result(session, wialon_result):
 
 def update_wialon_history_via_sql():
     """Вызов SQL-функции для обновления CashHistoryWialon."""
+    session = SessionLocal()
     try:
-        # Создаем новое соединение для вызова хранимой процедуры
-        session = SessionLocal()
         # Выполнение процедуры в отдельной сессии
-        result = session.execute(text("CALL update_cash_history_wialon();")).fetchone()
+        result = session.execute(text("CALL update_cash_history_wialon();"))
 
         # Получаем количество добавленных строк из возвращенного результата
-        added_rows = result[0] if result else 0
+        added_rows = result.fetchone()[0] if result else 0
 
         # Выводим количество добавленных строк
         print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
 
         session.commit()  # Закрытие сессии после всех операций
-
     except Exception as e:
         print(f"Error in update_wialon_history_via_sql: {e}")
+        session.rollback()
     finally:
         session.close()
 
