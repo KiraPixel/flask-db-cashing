@@ -133,24 +133,25 @@ def update_wialon_history_via_sql():
     """Вызов SQL-функции для обновления CashHistoryWialon."""
     session = SessionLocal()
     try:
-        # Вызов SQL-функции с явным объявлением как текстового запроса
-        result = session.execute(text("CALL update_cash_history_wialon();")).fetchone()
+        # Начинаем транзакцию явно
+        with session.begin():  # Используем session.begin() для явного начала транзакции
+            # Вызов SQL-функции с явным объявлением как текстового запроса
+            result = session.execute(text("CALL update_cash_history_wialon();")).fetchone()
 
-        # Получаем количество добавленных строк из возвращенного результата
-        added_rows = result[0] if result else 0
+            # Получаем количество добавленных строк из возвращенного результата
+            added_rows = result[0] if result else 0
 
-        # Выводим количество добавленных строк
-        print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
+            # Выводим количество добавленных строк
+            print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
 
         # Закрытие сессии после всех операций
-        session.commit()
+        session.commit()  # Коммит всех изменений
 
     except Exception as e:
         session.rollback()
         print(f"Error in update_wialon_history_via_sql: {e}")
     finally:
         session.close()
-
 
 
 def cash_db(cesar_result, wialon_result):
