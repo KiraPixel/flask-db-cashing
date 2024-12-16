@@ -133,21 +133,23 @@ def update_wialon_history_via_sql():
     """Вызов SQL-функции для обновления CashHistoryWialon."""
     session = SessionLocal()  # Используем одну сессию
     try:
-        # Выполняем хранимую процедуру
+        # Выполняем хранимую процедуру и сразу получаем результат
         result = session.execute(text("CALL update_cash_history_wialon();"))
         session.commit()  # Подтверждаем изменения после выполнения процедуры
 
-        # Получаем количество добавленных строк, возвращаемое процедурой
+        # Проверяем, если есть результат
         added_rows = result.fetchone()[0] if result else 0
         print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
 
-        session.commit()  # Подтверждаем изменения
+        # Подтверждаем изменения
+        session.commit()
 
     except Exception as e:
         print(f"Error in update_wialon_history_via_sql: {e}")
         session.rollback()
     finally:
         session.close()
+
 
 
 
