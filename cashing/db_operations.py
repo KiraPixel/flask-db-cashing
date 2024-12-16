@@ -142,11 +142,15 @@ def update_wialon_history_via_sql():
         # Выводим количество добавленных строк
         print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
 
+        # Закрытие сессии после всех операций
+        session.commit()
+
     except Exception as e:
         session.rollback()
         print(f"Error in update_wialon_history_via_sql: {e}")
     finally:
         session.close()
+
 
 
 def cash_db(cesar_result, wialon_result):
