@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, and_, desc, text
+from sqlalchemy import create_engine, text
 from models import CashWialon, CashCesar, CashHistoryWialon
 import config
 from cashing.utils import to_unix_time
@@ -129,68 +129,26 @@ def process_wialon_result(session, wialon_result):
         bulk_insert_or_replace(session, replace_query, batch_data)
 
 
-def update_wialon_history():
-    """Добавляет или обновляет запись в CashHistoryWialon, если есть изменения."""
+def update_wialon_history_via_sql():
+    """Вызов SQL-функции для обновления CashHistoryWialon."""
     session = SessionLocal()
     try:
-        # Получаем текущее время и вычитаем 15 минут
-        current_time = int(datetime.utcnow().timestamp())  # Текущее время в формате Unix
-        time_limit = current_time - 15 * 60  # Текущая метка времени минус 15 минут
-
-        # Получаем все записи CashWialon, где last_time больше time_limit
-        cash_wialon = session.query(CashWialon).filter(
-            CashWialon.last_time > time_limit,
-            CashWialon.last_time > 0,
-            CashWialon.pos_x != 0,
-            CashWialon.pos_y != 0
-        ).all()
-
-        # Получаем все существующие записи CashHistoryWialon в виде словаря
-        history_entries = {
-            (entry.uid, entry.nm): entry for entry in session.query(CashHistoryWialon).all()
-        }
-
-        new_entries = []
-
-        for item in cash_wialon:
-            key = (item.uid, item.nm)
-            # Проверяем, есть ли уже запись
-            history_entry = history_entries.get(key)
-
-            # Если запись не найдена, создаем новую
-            if not history_entry:
-                new_entry = CashHistoryWialon(
-                    uid=item.uid,
-                    nm=item.nm,
-                    pos_x=item.pos_x,
-                    pos_y=item.pos_y,
-                    last_time=item.last_time
-                )
-                new_entries.append(new_entry)
-            else:
-                # Если время обновления больше, чем в последней записи, обновляем
-                if item.last_time > history_entry.last_time:
-                    # Проверяем, изменились ли координаты
-                    if item.pos_x != history_entry.pos_x or item.pos_y != history_entry.pos_y:
-                        new_entry = CashHistoryWialon(
-                            uid=item.uid,
-                            nm=item.nm,
-                            pos_x=item.pos_x,
-                            pos_y=item.pos_y,
-                            last_time=item.last_time
-                        )
-                        new_entries.append(new_entry)
-
-        # Добавляем все новые записи за один раз
-        if new_entries:
-            session.bulk_save_objects(new_entries)
-
+        # Вызов SQL-функции с явным объявлением как текстового запроса
+        session.execute(text("CALL update_cash_history_wialon();"))
         session.commit()
+
+        # Получаем количество измененных строк с помощью ROW_COUNT
+        result = session.execute(text("SELECT ROW_COUNT();")).scalar()
+
+        # Выводим количество добавленных строк
+        print(f"Количество добавленных строк в cash_history_wialon: {result}")
+
     except Exception as e:
-        session.rollback()  # Откат транзакции в случае ошибки
-        print(f"Error occurred while wialon_cash_history: {e}")
+        session.rollback()
+        print(f"Error in update_wialon_history_via_sql: {e}")
     finally:
         session.close()
+
 
 
 def cash_db(cesar_result, wialon_result):
@@ -205,4 +163,4 @@ def cash_db(cesar_result, wialon_result):
     finally:
         session.close()
         print('Обновляю историю...')
-        update_wialon_history()
+        update_wialon_history_via_sql()
