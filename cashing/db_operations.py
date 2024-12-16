@@ -130,24 +130,27 @@ def process_wialon_result(session, wialon_result):
 
 
 def update_wialon_history_via_sql():
-    engine = create_engine(config.SQLALCHEMY_DATABASE_URL)
-    session = create_session(engine)  # Получаем сессию
-
+    session = SessionLocal()  # Создаем новую сессию для хранимой процедуры
     try:
         # Выполнение хранимой процедуры
-        result = session.execute(text("CALL update_cash_history_wialon();"))
+        session.execute(text("CALL update_cash_history_wialon();"))
         session.commit()  # Закрытие транзакции
 
-        # Получение количества добавленных строк, если результат есть
+        # Закрытие сессии, прежде чем создать новую для получения результата
+        session.close()
+
+        # Создаем новую сессию для получения количества добавленных строк
+        session = SessionLocal()
+        result = session.execute(text("SELECT @added_rows;"))
         added_rows = result.fetchone()[0] if result else 0
         print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
 
     except Exception as e:
-        session.rollback()  # Откат транзакции в случае ошибки
         print(f"Error in update_wialon_history_via_sql: {e}")
 
     finally:
         session.close()  # Закрываем сессию
+
 
 
 def cash_db(cesar_result, wialon_result):
