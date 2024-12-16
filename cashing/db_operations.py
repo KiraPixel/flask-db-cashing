@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, text
-from models import CashWialon, CashCesar, CashHistoryWialon
+from models import CashWialon, CashCesar, CashHistoryWialon, create_session
 import config
 from cashing.utils import to_unix_time
 from datetime import datetime, timedelta
@@ -130,25 +130,24 @@ def process_wialon_result(session, wialon_result):
 
 
 def update_wialon_history_via_sql():
-    """Вызов SQL-функции для обновления CashHistoryWialon."""
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URL)
+    session = create_session(engine)  # Получаем сессию
+
     try:
-        # Создаем новое соединение для вызова хранимой процедуры
-        session = SessionLocal()
-        # Выполнение процедуры в отдельной сессии
-        result = session.execute(text("CALL update_cash_history_wialon();")).fetchone()
+        # Выполнение хранимой процедуры
+        result = session.execute(text("CALL update_cash_history_wialon();"))
+        session.commit()  # Закрытие транзакции
 
-        # Получаем количество добавленных строк из возвращенного результата
-        added_rows = result[0] if result else 0
-
-        # Выводим количество добавленных строк
+        # Получение количества добавленных строк, если результат есть
+        added_rows = result.fetchone()[0] if result else 0
         print(f"Количество добавленных строк в cash_history_wialon: {added_rows}")
 
-        session.commit()  # Закрытие сессии после всех операций
-
     except Exception as e:
+        session.rollback()  # Откат транзакции в случае ошибки
         print(f"Error in update_wialon_history_via_sql: {e}")
+
     finally:
-        session.close()
+        session.close()  # Закрываем сессию
 
 
 def cash_db(cesar_result, wialon_result):
