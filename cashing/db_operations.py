@@ -134,7 +134,8 @@ def update_wialon_history_via_sql():
     session = SessionLocal()
     try:
         # Вызов SQL-функции с явным объявлением как текстового запроса
-        session.execute(text("CALL update_cash_history_wialon();"))
+        session.execute(text("CALL update_cash_history_wialon"))
+        session.commit()
     except Exception as e:
         session.rollback()
         print(f"Error in update_wialon_history_via_sql: {e}")
