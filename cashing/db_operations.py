@@ -88,7 +88,7 @@ def process_wialon_result(session, wialon_result):
 
             # Проверяем наличие sens и cml, создаем пустые словари, если они отсутствуют
             cmd = {c['id']: c['n'] for c in item.get('cml', {}).values()} if item.get('cml') else {}
-            sens = {s['id']: s['n'] for s in item.get('sens', {}).values()} if item.get('sens') else {}
+            sens = {s['id']: (s['n'], s['m']) for s in item.get('sens', {}).values()} if item.get('sens') else {}
 
             # Обработка pos
             if item.get('pos') is not None:
