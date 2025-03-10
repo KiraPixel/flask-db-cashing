@@ -14,7 +14,7 @@ def get_wialon_sid():
     response = requests.get(api_url, params={
         'svc': 'token/login',
         'params': json.dumps(params)
-    }, verify=False)
+    }, verify=True)
 
     if response.status_code == 200:
         result = response.json()
@@ -45,7 +45,7 @@ def search_all_items():
         'svc': 'core/search_items',
         'params': json.dumps(params),
         'sid': get_wialon_sid()
-    }, verify=False)
+    }, verify=True)
 
     if response.status_code == 200:
         final_response = response.json()
@@ -73,7 +73,7 @@ def exec_cmd(unit_id):
         'svc': 'unit/exec_cmd',
         'params': json.dumps(params),
         'sid': get_wialon_sid()
-    }, verify=False)
+    }, verify=True)
 
     if response.status_code == 200:
         final_response = response.json()
@@ -92,7 +92,7 @@ def get_sensors(unit_id):
         'svc': 'unit/calc_last_message',
         'params': json.dumps(params),
         'sid': get_wialon_sid()
-    }, verify=False)
+    }, verify=True)
 
     if response.status_code == 200:
         final_response = response.json()

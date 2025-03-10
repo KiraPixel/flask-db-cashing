@@ -7,6 +7,8 @@ def update_db():
     """Обновляет базу данных, извлекая данные из API и очищая старые записи."""
     print("Запуск обновления базы данных...")
     cesar_result, wialon_result = fetch_data()
+    print(f"Получил от Виалона: {len(wialon_result)}")
+    print(f"Получил от Цезаря: {len(cesar_result)}")
     cash_db(cesar_result, wialon_result)
     print("Обновление базы данных завершено.")
 
