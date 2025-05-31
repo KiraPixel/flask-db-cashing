@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-cashing
+  namespace: prd-cm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-cashing
+  template:
+    metadata:
+      labels:
+        app: db-cashing
+    spec:
+      containers:
+        - name: db-cashing
+          image: ghcr.io/kirapixel/db-cashing:20250531200817
+          envFrom:
+            - secretRef:
+                name: flask-cm-spectr-secret
