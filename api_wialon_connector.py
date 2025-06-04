@@ -51,9 +51,6 @@ def search_all_items():
         final_response = response.json()
         final_response = final_response['items']
 
-        # with open('search_items_response.json', 'w', encoding='utf-8') as json_file:
-        #     json.dump(final_response, json_file, ensure_ascii=False, indent=4)
-
         return final_response
     else:
         print(f"Error: {response.status_code} - {response.text}")
