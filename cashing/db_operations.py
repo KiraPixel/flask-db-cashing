@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, text
-from models import CashWialon, CashCesar, CashHistoryWialon
+from models import CashWialon, CashCesar, CashHistoryWialon, SystemSettings
 import config
 from cashing.utils import to_unix_time
 from datetime import datetime, timedelta
@@ -156,3 +156,13 @@ def cash_db(cesar_result, wialon_result):
         session.close()
         print('Обновляю историю...')
         update_wialon_history_via_sql()
+
+def check_status():
+    try:
+        session = SessionLocal()
+        result = session.query(SystemSettings).filter(SystemSettings.id == 0).first()
+        session.close()
+        return result.enable_db_cashing
+    except Exception as e:
+        print('Ошибка подключения к БД', e)
+        return 0

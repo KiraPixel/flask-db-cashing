@@ -1,6 +1,6 @@
 import time
 from cashing.data_fetcher import fetch_data
-from cashing.db_operations import cash_db
+from cashing.db_operations import cash_db, check_status
 
 
 def update_db():
@@ -17,5 +17,9 @@ def update_db():
 if __name__ == "__main__":
     print("Запуск планировщика задач...")
     while True:
-        update_db()
-        time.sleep(39)  # Задержка, чтобы не перегружать процессор
+        if check_status() == 0:
+            print('Модуль отключен. Ожидание 100 секунд')
+            time.sleep(100)
+        else:
+            update_db()
+            time.sleep(39)
