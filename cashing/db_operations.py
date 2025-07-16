@@ -143,6 +143,20 @@ def update_wialon_history_via_sql():
         session.close()
 
 
+def update_cesar_history_via_sql():
+    """Вызов SQL-функции для обновления CashHistoryCesar."""
+    session = SessionLocal()
+    try:
+        # Вызов SQL-функции с явным объявлением как текстового запроса
+        session.execute(text("CALL update_cash_history_cesar"))
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error in update_cesar_history_via_sql: {e}")
+    finally:
+        session.close()
+
+
 def cash_db(cesar_result, wialon_result):
     session = SessionLocal()
     try:
@@ -156,6 +170,7 @@ def cash_db(cesar_result, wialon_result):
         session.close()
         print('Обновляю историю...')
         update_wialon_history_via_sql()
+        update_cesar_history_via_sql()
 
 def check_status():
     try:
