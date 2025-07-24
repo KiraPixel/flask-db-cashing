@@ -22,4 +22,4 @@ if __name__ == "__main__":
             time.sleep(100)
         else:
             update_db()
-            time.sleep(39)
+            time.sleep(40)

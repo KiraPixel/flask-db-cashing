@@ -14,7 +14,9 @@ def fetch_data():
         cesar_result = []
 
     try:
-        wialon_result = WialonConnector.search_all_items()
+        wialon_connector = WialonConnector.WialonApi()
+        print(wialon_connector.sid)
+        wialon_result = wialon_connector.search_all_items() or []
     except Exception as e:
         print(f"Error occurred while fetching data from Wialon API: {e}")
         wialon_result = []
