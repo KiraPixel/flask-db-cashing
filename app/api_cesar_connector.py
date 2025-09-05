@@ -1,7 +1,7 @@
+import os
 from datetime import datetime, timedelta, timezone
 import time
 import requests
-import config
 
 
 token = ''
@@ -25,8 +25,8 @@ class CesarApi:
             'accept': '*/*',
         }
         data = {
-            'username': config.CESAR_USERNAME,
-            'password': config.CESAR_PASSWORD,
+            'username': os.getenv('CESAR_USERNAME', 'default_username'),
+            'password': os.getenv('CESAR_PASSWORD', 'default_password'),
             'grant_type': 'password'
         }
         request = requests.post(self.api_url+'token', headers=headers, data=data)

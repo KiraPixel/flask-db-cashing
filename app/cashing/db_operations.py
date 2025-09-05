@@ -1,29 +1,33 @@
+import os
+import logging
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, text
-from models import CashWialon, CashCesar, CashHistoryWialon, SystemSettings
-import config
-from cashing.utils import to_unix_time
-from datetime import datetime, timedelta
+from app.models import SystemSettings
+from app.cashing.utils import to_unix_time
+
+# Настройка логгера (совместимого с scheduler.py и data_fetcher.py)
+logger = logging.getLogger(__name__)
 
 # Конфигурация базы данных
-SQLALCHEMY_DATABASE_URL = config.SQLALCHEMY_DATABASE_URL
+SQLALCHEMY_DATABASE_URL = os.getenv('SQLALCHEMY_DATABASE_URL', 'sqlite:///default.db')
 engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def bulk_insert_or_replace(session, query, params):
     """Выполняет REPLACE INTO в батчах для повышения производительности."""
     try:
+        logger.debug(f"Выполнение батч-операции с {len(params)} записями.")
         session.execute(query, params)
+        logger.info(f"Успешно выполнена батч-операция с {len(params)} записями.")
     except Exception as e:
-        print(f"Error during bulk operation: {e}")
+        logger.error(f"Ошибка при выполнении батч-операции: {str(e)}")
         session.rollback()
         raise
-
 
 def process_cesar_result(session, cesar_result):
     """Обрабатывает данные из cesar_result и выполняет REPLACE INTO cash_cesar."""
     if not cesar_result:
+        logger.warning("Нет данных из Cesar для обработки.")
         return
 
     replace_query = text(
@@ -33,14 +37,12 @@ def process_cesar_result(session, cesar_result):
 
     batch_data = []
     for item in cesar_result:
-        # Проверка на None
         if item is None:
-            print("Skipping None item")
+            logger.warning("Пропущен элемент None в cesar_result.")
             continue
 
-        # Проверка на отсутствие ключей
         if None in [item.get('unit_id'), item.get('object_name'), item.get('vin')]:
-            print(f"Skipping item due to missing required fields: {item}")
+            logger.warning(f"Пропущен элемент из-за отсутствия обязательных полей: {item}")
             continue
 
         object_name = item.get('object_name', '').split('|')[0].strip() if '|' in item.get('object_name', '') else item.get('object_name', '')
@@ -57,12 +59,15 @@ def process_cesar_result(session, cesar_result):
         })
 
     if batch_data:
+        logger.info(f"Подготовлено {len(batch_data)} записей для cash_cesar.")
         bulk_insert_or_replace(session, replace_query, batch_data)
-
+    else:
+        logger.warning("Нет валидных данных для вставки в cash_cesar.")
 
 def process_wialon_result(session, wialon_result):
     """Обрабатывает данные из wialon_result и обновляет cash_wialon, cash_history_wialon."""
     if not wialon_result:
+        logger.warning("Нет данных из Wialon для обработки.")
         return
 
     replace_query = text(
@@ -73,24 +78,21 @@ def process_wialon_result(session, wialon_result):
     batch_data = []
     for idx, item in enumerate(wialon_result):
         if item is None:
-            print(f"Skipping None item at index {idx}")
+            logger.warning(f"Пропущен элемент None на индексе {idx} в wialon_result.")
             continue
 
         try:
-            # Проверяем наличие необходимых ключей
             if item.get('id') is None or item.get('nm') is None:
-                print(f"Skipping item due to missing required fields at index {idx}: {item}")
+                logger.warning(f"Пропущен элемент на индексе {idx} из-за отсутствия обязательных полей: {item}")
                 continue
 
             uid = item.get('uid', 0)
             uid = 0 if not str(uid).isdigit() else uid
             nm = item.get('nm', '').split('|')[0].strip() if '|' in item.get('nm', '') else item.get('nm', '')
 
-            # Проверяем наличие sens и cml, создаем пустые словари, если они отсутствуют
             cmd = {c['id']: c['n'] for c in item.get('cml', {}).values()} if item.get('cml') else {}
             sens = {s['id']: (s['n'], s['m']) for s in item.get('sens', {}).values()} if item.get('sens') else {}
 
-            # Обработка pos
             if item.get('pos') is not None:
                 pos_x = item['pos'].get('x', 0.0) if item['pos'].get('x') is not None else 0.0
                 pos_y = item['pos'].get('y', 0.0) if item['pos'].get('y') is not None else 0.0
@@ -109,7 +111,6 @@ def process_wialon_result(session, wialon_result):
                 last_time = 0
                 valid_nav = 0
 
-
             batch_data.append({
                 'id': item.get('id'),
                 'uid': uid,
@@ -124,64 +125,72 @@ def process_wialon_result(session, wialon_result):
                 'valid_nav': valid_nav,
             })
 
-        except Exception as e:  # Ловим все исключения
-            print(f"Error processing item at index {idx}: {item}")
-            print(f"Exception: {e}")
-            continue  # Пропустить ошибочный элемент
+        except Exception as e:
+            logger.error(f"Ошибка при обработке элемента на индексе {idx}: {str(e)}")
+            continue
 
     if batch_data:
+        logger.info(f"Подготовлено {len(batch_data)} записей для cash_wialon.")
         bulk_insert_or_replace(session, replace_query, batch_data)
-
+    else:
+        logger.warning("Нет валидных данных для вставки в cash_wialon.")
 
 def update_wialon_history_via_sql():
     """Вызов SQL-функции для обновления CashHistoryWialon."""
     session = SessionLocal()
     try:
-        # Вызов SQL-функции с явным объявлением как текстового запроса
+        logger.info("Вызов SQL-функции update_cash_history_wialon.")
         session.execute(text("CALL update_cash_history_wialon"))
         session.commit()
+        logger.info("Успешно обновлена история Wialon.")
     except Exception as e:
         session.rollback()
-        print(f"Error in update_wialon_history_via_sql: {e}")
+        logger.error(f"Ошибка при обновлении истории Wialon: {str(e)}")
     finally:
         session.close()
-
 
 def update_cesar_history_via_sql():
     """Вызов SQL-функции для обновления CashHistoryCesar."""
     session = SessionLocal()
     try:
-        # Вызов SQL-функции с явным объявлением как текстового запроса
+        logger.info("Вызов SQL-функции update_cash_history_cesar.")
         session.execute(text("CALL update_cash_history_cesar"))
         session.commit()
+        logger.info("Успешно обновлена история Cesar.")
     except Exception as e:
         session.rollback()
-        print(f"Error in update_cesar_history_via_sql: {e}")
+        logger.error(f"Ошибка при обновлении истории Cesar: {str(e)}")
     finally:
         session.close()
-
 
 def cash_db(cesar_result, wialon_result):
+    """Обновляет базу данных данными из cesar_result и wialon_result."""
     session = SessionLocal()
     try:
+        logger.info("Начало обновления базы данных.")
         process_cesar_result(session, cesar_result)
         process_wialon_result(session, wialon_result)
-        session.commit()  # Один общий commit для всех операций
+        session.commit()
+        logger.info("Успешно выполнен commit операций с базой данных.")
     except Exception as e:
         session.rollback()
-        print(f"Error occurred during database operation: {e}")
+        logger.error(f"Ошибка при выполнении операций с базой данных: {str(e)}")
+        raise
     finally:
         session.close()
-        print('Обновляю историю...')
+        logger.info("Обновление истории...")
         update_wialon_history_via_sql()
         update_cesar_history_via_sql()
 
 def check_status():
+    """Проверяет статус системы в базе данных."""
     try:
         session = SessionLocal()
         result = session.query(SystemSettings).filter(SystemSettings.id == 0).first()
         session.close()
-        return result.enable_db_cashing
+        status = result.enable_db_cashing if result else 0
+        logger.debug(f"Статус системы: {'включен' if status else 'выключен'}.")
+        return status
     except Exception as e:
-        print('Ошибка подключения к БД', e)
+        logger.error(f"Ошибка подключения к базе данных: {str(e)}")
         return 0

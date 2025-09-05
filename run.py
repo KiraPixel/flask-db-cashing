@@ -1,25 +1,42 @@
 import time
-from cashing.data_fetcher import fetch_data
-from cashing.db_operations import cash_db, check_status
+import logging
+from app.cashing.data_fetcher import fetch_data
+from app.cashing.db_operations import cash_db, check_status
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 def update_db():
     """Обновляет базу данных, извлекая данные из API и очищая старые записи."""
-    print("Запуск обновления базы данных...")
-    cesar_result, wialon_result = fetch_data()
-    print(f"Получил от Виалона: {len(wialon_result)}")
-    print(f"Получил от Цезаря: {len(cesar_result)}")
-    cash_db(cesar_result, wialon_result)
-    print("Обновление базы данных завершено.")
-
-
+    try:
+        logger.info("Запуск обновления базы данных...")
+        cesar_result, wialon_result = fetch_data()
+        cash_db(cesar_result, wialon_result)
+        logger.info("Обновление базы данных завершено.")
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении базы данных: {str(e)}")
+        raise
 
 if __name__ == "__main__":
-    print("Запуск планировщика задач...")
+    logger.info("Запуск планировщика задач...")
     while True:
-        if check_status() == 0:
-            print('Модуль отключен. Ожидание 100 секунд')
-            time.sleep(100)
-        else:
-            update_db()
-            time.sleep(40)
+        try:
+            if check_status() == 0:
+                logger.warning("Модуль отключен. Ожидание 100 секунд.")
+                time.sleep(100)
+            else:
+                update_db()
+                logger.info("Ожидание 10 секунд перед следующей итерацией.")
+                time.sleep(10)
+        except Exception as e:
+            logger.error(f"Ошибка в главном цикле: {str(e)}")
+            logger.info("Ожидание 60 секунд перед повторной попыткой.")
+            time.sleep(60)

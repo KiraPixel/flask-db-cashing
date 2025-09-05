@@ -1,7 +1,6 @@
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import update
-from models import CashCesar, CashWialon, Transport
-from cashing.db_operations import SessionLocal
+from app.models import CashCesar, CashWialon, Transport
+from app.cashing.db_operations import SessionLocal
 
 def clean_transport_number(number):
     """Очистка и форматирование номера транспорта."""
