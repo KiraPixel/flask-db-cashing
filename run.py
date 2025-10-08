@@ -18,8 +18,8 @@ def update_db():
     """Обновляет базу данных, извлекая данные из API и очищая старые записи."""
     try:
         logger.info("Запуск обновления базы данных...")
-        cesar_result, wialon_result = fetch_data()
-        cash_db(cesar_result, wialon_result)
+        cesar_result, wialon_result, axenta_result = fetch_data()
+        cash_db(cesar_result, wialon_result, axenta_result)
         logger.info("Обновление базы данных завершено.")
     except Exception as e:
         logger.error(f"Ошибка при обновлении базы данных: {str(e)}")

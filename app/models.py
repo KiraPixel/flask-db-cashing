@@ -28,6 +28,8 @@ class Transport(Base):
     model_id = Column(Integer, ForeignKey('transport_model.id'), nullable=False)
     uNumber = Column(Text)
     vin = Column(Text)
+    x = Column(Float)
+    y = Column(Float)
     equipment = Column(JSON)
     storage = relationship('Storage', back_populates='transports')
     transport_model = relationship('TransportModel', back_populates='transports')
@@ -101,6 +103,22 @@ class CashWialon(Base):
     )
 
 
+class CashAxenta(Base):
+    __tablename__ = 'cash_axenta'
+    id = Column(Integer, primary_key=True)
+    uid = Column(Integer, nullable=False, default=0)
+    nm = Column(Text, nullable=False)
+    pos_x = Column(Float, default=0.0)
+    pos_y = Column(Float, default=0.0)
+    gps = Column(Integer, default=0)
+    last_time = Column(Integer, default=0)
+    last_pos_time = Column(Integer, default=0)
+    connected_status = Column(Boolean, nullable=True, default=False)
+    cmd = Column(Text, nullable=True, default='')
+    sens = Column(Text, nullable=True, default='')
+    valid_nav = Column(Integer, nullable=True, default=1)
+
+
 class CashHistoryWialon(Base):
     __tablename__ = 'cash_history_wialon'
     id = Column(Integer, primary_key=True)
@@ -109,6 +127,19 @@ class CashHistoryWialon(Base):
     pos_x = Column(Float, default=0.0)
     pos_y = Column(Float, default=0.0)
     last_time = Column(Integer, default=0)
+    valid_nav = Column(Integer, nullable=True, default=0)
+
+
+class CashHistoryAxenta(Base):
+    __tablename__ = 'cash_history_axenta'
+    id = Column(Integer, primary_key=True)
+    uid = Column(Integer, nullable=False, default=0)
+    nm = Column(Text, nullable=False)
+    pos_x = Column(Float, default=0.0)
+    pos_y = Column(Float, default=0.0)
+    last_time = Column(Integer, default=0)
+
+    valid_nav = Column(Integer, nullable=True, default=0)
 
 
 class SystemSettings(Base):
