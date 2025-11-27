@@ -158,6 +158,7 @@ def process_axenta_result(session, axenta_result):
             continue
 
         try:
+            # logger.info(f'Парсим item {idx}: {item}')
             # Проверка обязательных полей
             if item.get('id') is None or item.get('name') is None:
                 logger.warning(f"Пропущен элемент на индексе {idx} из-за отсутствия обязательных полей: {item}")
@@ -171,27 +172,34 @@ def process_axenta_result(session, axenta_result):
             uid = 0 if not str(uid).isdigit() else int(uid)
 
             # Извлечение данных о последнем сообщении
-            last_message = item.get('lastMessage', {})
-            pos = last_message.get('pos', {})
-            pos_x = pos.get('x', 0.0) if pos.get('x') is not None else 0.0
-            pos_y = pos.get('y', 0.0) if pos.get('y') is not None else 0.0
-            gps = pos.get('sc', 0) if pos.get('sc') is not None else 0
-            last_time = z_to_unix_time(last_message.get('t', None))
-            last_pos_time = z_to_unix_time(last_message.get('tpos', None))
+            pos_x = None
+            pos_y = None
+            gps = None
+            last_time = 0
+            last_pos_time = 0
+            valid_nav = 0
+            last_message = item.get('lastMessage', None)
+            if last_message is not None:
+                pos = last_message.get('pos', None)
+                last_time = z_to_unix_time(last_message.get('t', None))
+                last_pos_time = z_to_unix_time(last_message.get('tpos', None))
+                if pos is not None:
+                    pos_x = pos.get('x', 0.0) if pos.get('x') is not None else 0.0
+                    pos_y = pos.get('y', 0.0) if pos.get('y') is not None else 0.0
+                    gps = pos.get('sc', 0) if pos.get('sc') is not None else 0
+                    if gps is not None and gps > 4:
+                        valid_nav = 1
 
             # Поля cmd и sens (пустые, так как в данных Axenta нет аналогов cml и sens из Wialon)
             cmd = ''
             sens = ''
 
-            # valid_nav (устанавливаем 1 по умолчанию, так как в данных нет явного аналога)
-            valid_nav = 1
-
             batch_data.append({
                 'id': item.get('id'),
                 'uid': uid,
                 'nm': nm,
-                'pos_x': pos_x,
-                'pos_y': pos_y,
+                'pos_x': pos_y,
+                'pos_y': pos_x,
                 'gps': gps,
                 'last_time': last_time,
                 'last_pos_time': last_pos_time,
