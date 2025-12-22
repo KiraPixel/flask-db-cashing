@@ -71,8 +71,8 @@ def process_wialon_result(session, wialon_result):
         return
 
     replace_query = text(
-        """REPLACE INTO cash_wialon (id, uid, nm, pos_x, pos_y, gps, last_time, last_pos_time, cmd, sens, valid_nav)
-           VALUES (:id, :uid, :nm, :pos_x, :pos_y, :gps, :last_time, :last_pos_time, :cmd, :sens, :valid_nav)"""
+        """REPLACE INTO cash_wialon (id, uid, nm, pos_x, pos_y, gps, last_time, last_pos_time, cmd, sens, valid_nav, engine_hours)
+           VALUES (:id, :uid, :nm, :pos_x, :pos_y, :gps, :last_time, :last_pos_time, :cmd, :sens, :valid_nav, :engine_hours)"""
     )
 
     batch_data = []
@@ -107,9 +107,11 @@ def process_wialon_result(session, wialon_result):
             if item.get('lmsg') is not None:
                 last_time = item.get('lmsg', {}).get('t', 0) if item.get('lmsg') is not None else 0
                 valid_nav = item.get('lmsg', {}).get('p', {}).get('valid_nav', 0) if item.get('lmsg') is not None else 0
+                engine_hours = item.get('lmsg', {}).get('p', {}).get('engine_hours', 0) if item.get('lmsg') is not None else 0
             else:
                 last_time = 0
                 valid_nav = 0
+                engine_hours = None
 
             batch_data.append({
                 'id': item.get('id'),
@@ -123,6 +125,7 @@ def process_wialon_result(session, wialon_result):
                 'cmd': str(cmd),
                 'sens': str(sens),
                 'valid_nav': valid_nav,
+                'engine_hours': engine_hours
             })
 
         except Exception as e:

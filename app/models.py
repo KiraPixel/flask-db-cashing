@@ -97,6 +97,7 @@ class CashWialon(Base):
     cmd = Column(Text, nullable=True, default='')
     sens = Column(Text, nullable=True, default='')
     valid_nav = Column(Integer, nullable=True, default=1)
+    engine_hours = Column(Float, default=0.0)
 
     __table_args__ = (
         Index('idx_cash_wialon_nm', 'nm'),
