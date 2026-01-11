@@ -30,7 +30,7 @@ class AxentaApi:
 
 
     def get_axenta_token(self) -> Optional[str]:
-        """Получает новый SID от Wialon API."""
+        """Получает новый SID от Axenta API."""
         data = {
             'username': self.login,
             'password': self.password

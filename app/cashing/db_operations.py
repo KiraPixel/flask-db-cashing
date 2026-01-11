@@ -64,80 +64,6 @@ def process_cesar_result(session, cesar_result):
     else:
         logger.warning("Нет валидных данных для вставки в cash_cesar.")
 
-def process_wialon_result(session, wialon_result):
-    """Обрабатывает данные из wialon_result и обновляет cash_wialon, cash_history_wialon."""
-    if not wialon_result:
-        logger.warning("Нет данных из Wialon для обработки.")
-        return
-
-    replace_query = text(
-        """REPLACE INTO cash_wialon (id, uid, nm, pos_x, pos_y, gps, last_time, last_pos_time, cmd, sens, valid_nav, engine_hours)
-           VALUES (:id, :uid, :nm, :pos_x, :pos_y, :gps, :last_time, :last_pos_time, :cmd, :sens, :valid_nav, :engine_hours)"""
-    )
-
-    batch_data = []
-    for idx, item in enumerate(wialon_result):
-        if item is None:
-            logger.warning(f"Пропущен элемент None на индексе {idx} в wialon_result.")
-            continue
-
-        try:
-            if item.get('id') is None or item.get('nm') is None:
-                logger.warning(f"Пропущен элемент на индексе {idx} из-за отсутствия обязательных полей: {item}")
-                continue
-
-            uid = item.get('uid', 0)
-            uid = 0 if not str(uid).isdigit() else uid
-            nm = item.get('nm', '').split('|')[0].strip() if '|' in item.get('nm', '') else item.get('nm', '')
-
-            cmd = {c['id']: c['n'] for c in item.get('cml', {}).values()} if item.get('cml') else {}
-            sens = {s['id']: (s['n'], s['m']) for s in item.get('sens', {}).values()} if item.get('sens') else {}
-
-            if item.get('pos') is not None:
-                pos_x = item['pos'].get('x', 0.0) if item['pos'].get('x') is not None else 0.0
-                pos_y = item['pos'].get('y', 0.0) if item['pos'].get('y') is not None else 0.0
-                gps = item.get('pos', {}).get('sc', 0) if item.get('pos') is not None else 0
-                last_pos_time = item.get('pos', {}).get('t', 0) if item.get('pos') is not None else 0
-            else:
-                pos_x = 0.0
-                pos_y = 0.0
-                gps = -1
-                last_pos_time = 0
-
-            if item.get('lmsg') is not None:
-                last_time = item.get('lmsg', {}).get('t', 0) if item.get('lmsg') is not None else 0
-                valid_nav = item.get('lmsg', {}).get('p', {}).get('valid_nav', 0) if item.get('lmsg') is not None else 0
-                engine_hours = item.get('lmsg', {}).get('p', {}).get('engine_hours', 0) if item.get('lmsg') is not None else 0
-            else:
-                last_time = 0
-                valid_nav = 0
-                engine_hours = None
-
-            batch_data.append({
-                'id': item.get('id'),
-                'uid': uid,
-                'nm': nm,
-                'pos_x': pos_x,
-                'pos_y': pos_y,
-                'gps': gps,
-                'last_time': last_time,
-                'last_pos_time': last_pos_time,
-                'cmd': str(cmd),
-                'sens': str(sens),
-                'valid_nav': valid_nav,
-                'engine_hours': engine_hours
-            })
-
-        except Exception as e:
-            logger.error(f"Ошибка при обработке элемента на индексе {idx}: {str(e)}")
-            continue
-
-    if batch_data:
-        logger.info(f"Подготовлено {len(batch_data)} записей для cash_wialon.")
-        bulk_insert_or_replace(session, replace_query, batch_data)
-    else:
-        logger.warning("Нет валидных данных для вставки в cash_wialon.")
-
 def process_axenta_result(session, axenta_result):
     """Обрабатывает данные из axenta_result и выполняет REPLACE INTO cash_axenta."""
     if not axenta_result:
@@ -222,20 +148,6 @@ def process_axenta_result(session, axenta_result):
     else:
         logger.warning("Нет валидных данных для вставки в cash_axenta.")
 
-def update_wialon_history_via_sql():
-    """Вызов SQL-функции для обновления CashHistoryWialon."""
-    session = SessionLocal()
-    try:
-        logger.info("Вызов SQL-функции update_cash_history_wialon.")
-        session.execute(text("CALL update_cash_history_wialon"))
-        session.commit()
-        logger.info("Успешно обновлена история Wialon.")
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Ошибка при обновлении истории Wialon: {str(e)}")
-    finally:
-        session.close()
-
 def update_cesar_history_via_sql():
     """Вызов SQL-функции для обновления CashHistoryCesar."""
     session = SessionLocal()
@@ -264,13 +176,12 @@ def update_axenta_history_via_sql():
     finally:
         session.close()
 
-def cash_db(cesar_result, wialon_result, axenta_result):
-    """Обновляет базу данных данными из cesar_result и wialon_result."""
+def cash_db(cesar_result, axenta_result):
+    """Обновляет базу данных данными из cesar_result и axenta_result."""
     session = SessionLocal()
     try:
         logger.info("Начало обновления базы данных.")
         process_cesar_result(session, cesar_result)
-        process_wialon_result(session, wialon_result)
         process_axenta_result(session, axenta_result)
         session.commit()
         logger.info("Успешно выполнен commit операций с базой данных.")
@@ -281,7 +192,6 @@ def cash_db(cesar_result, wialon_result, axenta_result):
     finally:
         session.close()
         logger.info("Обновление истории...")
-        update_wialon_history_via_sql()
         update_cesar_history_via_sql()
         update_axenta_history_via_sql()
 

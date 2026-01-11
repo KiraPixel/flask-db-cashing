@@ -20,7 +20,6 @@ class User(Base):
     def __repr__(self):
         return f'<User {self.username}>'
 
-
 class Transport(Base):
     __tablename__ = 'transport'
     id = Column(Integer, primary_key=True)
@@ -37,7 +36,6 @@ class Transport(Base):
     def __repr__(self):
         return f'<Transport {self.uNumber}>'
 
-
 class Storage(Base):
     __tablename__ = 'storage'
     ID = Column(Integer, primary_key=True)
@@ -51,7 +49,6 @@ class Storage(Base):
     def __repr__(self):
         return f'<Storage {self.name}>'
 
-
 class TransportModel(Base):
     __tablename__ = 'transport_model'
     id = Column(Integer, primary_key=True)
@@ -63,7 +60,6 @@ class TransportModel(Base):
 
     def __repr__(self):
         return f'<TransportModel {self.name}>'
-
 
 class CashCesar(Base):
     __tablename__ = 'cash_cesar'
@@ -82,28 +78,6 @@ class CashCesar(Base):
         Index('idx_cash_cesar_object_name', 'object_name'),
     )
 
-
-class CashWialon(Base):
-    __tablename__ = 'cash_wialon'
-    id = Column(Integer, primary_key=True)
-    uid = Column(Integer, nullable=False, default=0)
-    nm = Column(Text, nullable=False)
-    pos_x = Column(Float, default=0.0)
-    pos_y = Column(Float, default=0.0)
-    gps = Column(Integer, default=0)
-    last_time = Column(Integer, default=0)
-    last_pos_time = Column(Integer, default=0)
-    linked = Column(Boolean, nullable=True, default=False)
-    cmd = Column(Text, nullable=True, default='')
-    sens = Column(Text, nullable=True, default='')
-    valid_nav = Column(Integer, nullable=True, default=1)
-    engine_hours = Column(Float, default=0.0)
-
-    __table_args__ = (
-        Index('idx_cash_wialon_nm', 'nm'),
-    )
-
-
 class CashAxenta(Base):
     __tablename__ = 'cash_axenta'
     id = Column(Integer, primary_key=True)
@@ -119,18 +93,6 @@ class CashAxenta(Base):
     sens = Column(Text, nullable=True, default='')
     valid_nav = Column(Integer, nullable=True, default=1)
 
-
-class CashHistoryWialon(Base):
-    __tablename__ = 'cash_history_wialon'
-    id = Column(Integer, primary_key=True)
-    uid = Column(Integer, nullable=False, default=0)
-    nm = Column(Text, nullable=False)
-    pos_x = Column(Float, default=0.0)
-    pos_y = Column(Float, default=0.0)
-    last_time = Column(Integer, default=0)
-    valid_nav = Column(Integer, nullable=True, default=0)
-
-
 class CashHistoryAxenta(Base):
     __tablename__ = 'cash_history_axenta'
     id = Column(Integer, primary_key=True)
@@ -141,7 +103,6 @@ class CashHistoryAxenta(Base):
     last_time = Column(Integer, default=0)
 
     valid_nav = Column(Integer, nullable=True, default=0)
-
 
 class SystemSettings(Base):
     __tablename__ = 'system_settings'
