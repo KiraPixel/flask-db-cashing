@@ -1,5 +1,7 @@
 import os
 import logging
+from http.cookiejar import uppercase_escaped_char
+
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, text
 from app.models import SystemSettings
@@ -46,6 +48,8 @@ def process_cesar_result(session, cesar_result):
             continue
 
         object_name = item.get('object_name', '').split('|')[0].strip() if '|' in item.get('object_name', '') else item.get('object_name', '')
+        object_name.upper()
+        print(object_name)
         batch_data.append({
             'unit_id': item.get('unit_id'),
             'object_name': object_name,
@@ -95,6 +99,7 @@ def process_axenta_result(session, axenta_result):
 
             # Извлечение имени без суффиксов после '|'
             nm = item.get('name', '').split('|')[0].strip() if '|' in item.get('name', '') else item.get('name', '')
+            nm = nm.upper()
 
             # Извлечение уникального идентификатора и проверка, что это число
             uid = item.get('uniqueId', '0')
