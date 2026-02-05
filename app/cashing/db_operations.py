@@ -49,7 +49,6 @@ def process_cesar_result(session, cesar_result):
 
         object_name = item.get('object_name', '').split('|')[0].strip() if '|' in item.get('object_name', '') else item.get('object_name', '')
         object_name.upper()
-        print(object_name)
         batch_data.append({
             'unit_id': item.get('unit_id'),
             'object_name': object_name,
